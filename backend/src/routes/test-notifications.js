@@ -1,7 +1,7 @@
 import express from 'express'
 import { prisma } from '../server.js'
 import { sendEmailNotification } from '../services/notificationService.js'
-import { updateTasksToInProgress, checkDayBeforeReminders, checkDueTodayReminders, updateOverdueTasksToCompleted, updateAppointmentsToConfirmed, updateAppointmentsToCompleted } from '../services/notificationTriggers.js'
+import { updateTasksToInProgress, checkDayBeforeReminders, checkDueTodayReminders, updateOverdueTasksToCompleted, updateAppointmentsToConfirmed, updateAppointmentsToCompleted, checkTaskCreationFollowUps } from '../services/notificationTriggers.js'
 
 const router = express.Router()
 
@@ -64,13 +64,20 @@ router.post('/test-professional-email', async (req, res) => {
       })
     }
 
-    // Create a professional test notification
+    // Create a professional test notification with realistic payload
     const testNotification = {
       id: 'test-professional-' + Date.now(),
       title: 'Task Status Update',
-      message: 'Your task "Complete Project Documentation" has been automatically moved to "In Progress" status as it is due today (12/18/2024). Please ensure timely completion.',
+      message: 'Your task "Complete Project Documentation" has been automatically moved to "In Progress".',
       type: 'TASK_REMINDER',
       createdAt: new Date(),
+      data: JSON.stringify({
+        taskId: 'tsk_demo_123',
+        taskTitle: 'Complete Project Documentation',
+        oldStatus: 'PENDING',
+        newStatus: 'IN_PROGRESS',
+        dueDate: new Date()
+      })
     }
 
     // Send the professional test email
@@ -367,6 +374,27 @@ router.post('/test-due-today-reminders', async (req, res) => {
     })
   } catch (error) {
     console.error('Test due-today reminders error:', error)
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      details: error.message
+    })
+  }
+})
+
+// Test route to trigger 7-hour task creation follow-ups
+router.post('/test-task-followups', async (req, res) => {
+  try {
+    console.log('🧪 Manual task follow-ups test triggered...')
+    const result = await checkTaskCreationFollowUps()
+    res.json({
+      success: true,
+      message: 'Task follow-ups test completed successfully!',
+      timestamp: new Date().toISOString(),
+      result: result
+    })
+  } catch (error) {
+    console.error('Test task follow-ups error:', error)
     res.status(500).json({
       success: false,
       error: 'Internal server error',

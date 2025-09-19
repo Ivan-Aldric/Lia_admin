@@ -1,4 +1,5 @@
 import { checkOverdueTasks, checkTasksDueSoon, checkUpcomingAppointments, updateTasksToInProgress, checkDayBeforeReminders, checkDueTodayReminders, updateOverdueTasksToCompleted, updateAppointmentsToConfirmed, updateAppointmentsToCompleted } from './notificationTriggers.js'
+import { checkTaskCreationFollowUps } from './notificationTriggers.js'
 
 // Cron job to check for notifications every hour
 export const startNotificationCron = () => {
@@ -23,6 +24,9 @@ export const startNotificationCron = () => {
       
       // Check for due-today reminders (6 AM)
       await checkDueTodayReminders()
+
+      // Send 7h follow-ups for tasks created today
+      await checkTaskCreationFollowUps()
       
       // Check for overdue tasks to mark as completed
       await updateOverdueTasksToCompleted()
@@ -62,6 +66,7 @@ export const startNotificationCron = () => {
       await checkUpcomingAppointments()
       await checkDayBeforeReminders()
       await checkDueTodayReminders()
+      await checkTaskCreationFollowUps()
       await updateOverdueTasksToCompleted()
       await updateAppointmentsToConfirmed()
       await updateAppointmentsToCompleted()

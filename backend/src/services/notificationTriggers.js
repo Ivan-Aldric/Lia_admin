@@ -15,6 +15,39 @@ export const createAndSendNotification = async (userId, type, title, message, da
       return
     }
 
+    // Same-day duplicate suppression (per task/appointment/transaction)
+    const now = new Date()
+    const startOfDay = new Date(now)
+    startOfDay.setHours(0, 0, 0, 0)
+    const endOfDay = new Date(now)
+    endOfDay.setHours(23, 59, 59, 999)
+
+    // Identify a resource id if available
+    const resourceIdKey = data?.taskId ? 'taskId' : data?.appointmentId ? 'appointmentId' : data?.transactionId ? 'transactionId' : null
+    const resourceIdVal = resourceIdKey ? data[resourceIdKey] : null
+
+    const duplicateWhere = {
+      userId,
+      type,
+      createdAt: { gte: startOfDay, lte: endOfDay },
+      ...(resourceIdKey && resourceIdVal
+        ? (
+            data?.reminderType
+              ? { AND: [
+                  { data: { contains: `"${resourceIdKey}":"${resourceIdVal}"` } },
+                  { data: { contains: `"reminderType":"${data.reminderType}"` } }
+                ] }
+              : { data: { contains: `"${resourceIdKey}":"${resourceIdVal}"` } }
+          )
+        : { title, message }),
+    }
+
+    const existing = await prisma.notification.findFirst({ where: duplicateWhere })
+    if (existing) {
+      console.log('Skipping duplicate notification for same day:', { userId, type, resourceIdKey, resourceIdVal })
+      return existing
+    }
+
     // Create notification in database
     const notification = await prisma.notification.create({
       data: {
@@ -47,7 +80,7 @@ export const taskNotificationTriggers = {
       'GENERAL',
       'Task Assignment',
       `A new task "${task.title}" has been assigned to you${task.dueDate ? ` with a deadline of ${new Date(task.dueDate).toLocaleDateString()}` : ''}. Please review and begin work as soon as possible.`,
-      { taskId: task.id, taskTitle: task.title }
+      { taskId: task.id, taskTitle: task.title, reminderType: 'created' }
     )
   },
 
@@ -540,6 +573,69 @@ export const checkDueTodayReminders = async () => {
     console.log(`✅ Due-today reminders sent: ${tasksDueToday.length} tasks, ${appointmentsDueToday.length} appointments`)
   } catch (error) {
     console.error('Error checking due-today reminders:', error)
+  }
+}
+
+// Send a 7-hour follow-up email for tasks created today
+export const checkTaskCreationFollowUps = async () => {
+  try {
+    const now = new Date()
+    const startOfDay = new Date(now)
+    startOfDay.setHours(0, 0, 0, 0)
+    const endOfDay = new Date(now)
+    endOfDay.setHours(23, 59, 59, 999)
+
+    const sevenHoursAgo = new Date(now.getTime() - 7 * 60 * 60 * 1000)
+    const eightHoursAgo = new Date(now.getTime() - 8 * 60 * 60 * 1000)
+
+    // 1-hour window around 7h mark to avoid missing due to cron timing
+    const tasks = await prisma.task.findMany({
+      where: {
+        createdAt: { gte: eightHoursAgo, lte: sevenHoursAgo },
+        // ensure it's same day follow-up per requirement
+        AND: [{ createdAt: { gte: startOfDay, lte: endOfDay } }],
+      },
+      include: { user: { include: { settings: true } } },
+    })
+
+    let sent = 0
+    for (const task of tasks) {
+      // Skip if no user or settings
+      if (!task.user) continue
+
+      // Prevent duplicate follow-up for this task today
+      const exists = await prisma.notification.findFirst({
+        where: {
+          userId: task.userId,
+          type: 'TASK_REMINDER',
+          createdAt: { gte: startOfDay, lte: endOfDay },
+          AND: [
+            { data: { contains: `"taskId":"${task.id}"` } },
+            { data: { contains: `"reminderType":"follow_up_7h"` } },
+          ],
+        },
+      })
+      if (exists) continue
+
+      await createAndSendNotification(
+        task.userId,
+        'TASK_REMINDER',
+        'Task Follow-up',
+        `Just checking in: "${task.title}" was created earlier today. Keep up the momentum!`,
+        {
+          taskId: task.id,
+          taskTitle: task.title,
+          reminderType: 'follow_up_7h',
+        }
+      )
+      sent++
+    }
+
+    console.log(`✅ Task creation follow-ups sent: ${sent}`)
+    return { sent }
+  } catch (error) {
+    console.error('Error in checkTaskCreationFollowUps:', error)
+    return { sent: 0, error: error.message }
   }
 }
 

@@ -32,7 +32,90 @@ const generateEmailTemplate = (notification, logoUrl = null) => {
   const currentYear = new Date().getFullYear()
   const notificationType = notification.type.replace(/_/g, ' ').toLowerCase()
   const notificationIcon = getNotificationIcon(notification.type)
-  
+
+  // Parse data payload if present (stringified in DB)
+  let payload = null
+  try {
+    if (notification.data) {
+      payload = typeof notification.data === 'string' ? JSON.parse(notification.data) : notification.data
+    }
+  } catch (_) {
+    payload = null
+  }
+
+  // Build context-aware detail rows
+  const detailRows = []
+  // Common
+  detailRows.push(
+    `<div class="detail-row"><span class="detail-label">Notification Type</span><span class="detail-value">${notification.type.replace(/_/g, ' ')}</span></div>`
+  )
+  const createdAt = notification.createdAt ? new Date(notification.createdAt) : new Date()
+  detailRows.push(
+    `<div class="detail-row"><span class="detail-label">Time</span><span class="detail-value">${createdAt.toLocaleString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' })}</span></div>`
+  )
+  detailRows.push(
+    `<div class="detail-row"><span class="detail-label">Priority</span><span class="detail-value">${getNotificationPriority(notification.type)}</span></div>`
+  )
+
+  // Task-specific
+  if (payload?.taskId || payload?.taskTitle || payload?.dueDate || payload?.oldStatus || payload?.newStatus) {
+    if (payload.taskTitle) {
+      detailRows.push(`<div class="detail-row"><span class="detail-label">Task</span><span class="detail-value">${payload.taskTitle}</span></div>`) 
+    }
+    if (payload.dueDate) {
+      const d = new Date(payload.dueDate)
+      detailRows.push(`<div class="detail-row"><span class="detail-label">Due Date</span><span class="detail-value">${d.toLocaleString()}</span></div>`) 
+    }
+    if (payload.oldStatus || payload.newStatus) {
+      detailRows.push(`<div class="detail-row"><span class="detail-label">Status</span><span class="detail-value">${payload.oldStatus ? `${payload.oldStatus} → ` : ''}${payload.newStatus || ''}</span></div>`) 
+    }
+  }
+
+  // Appointment-specific
+  if (payload?.appointmentId || payload?.appointmentTitle || payload?.startTime || payload?.endTime || payload?.location) {
+    if (payload.appointmentTitle) {
+      detailRows.push(`<div class="detail-row"><span class="detail-label">Appointment</span><span class="detail-value">${payload.appointmentTitle}</span></div>`) 
+    }
+    if (payload.startTime) {
+      const s = new Date(payload.startTime)
+      detailRows.push(`<div class="detail-row"><span class="detail-label">Starts</span><span class="detail-value">${s.toLocaleString()}</span></div>`) 
+    }
+    if (payload.endTime) {
+      const e = new Date(payload.endTime)
+      detailRows.push(`<div class="detail-row"><span class="detail-label">Ends</span><span class="detail-value">${e.toLocaleString()}</span></div>`) 
+    }
+    if (payload.location) {
+      detailRows.push(`<div class="detail-row"><span class="detail-label">Location</span><span class="detail-value">${payload.location}</span></div>`) 
+    }
+  }
+
+  // Finance-specific
+  if (payload?.transactionId || payload?.amount || payload?.title) {
+    if (payload.title) {
+      detailRows.push(`<div class="detail-row"><span class="detail-label">Transaction</span><span class="detail-value">${payload.title}</span></div>`) 
+    }
+    if (payload.amount !== undefined && payload.amount !== null) {
+      const amt = Number(payload.amount)
+      const formatted = isNaN(amt) ? payload.amount : amt.toLocaleString(undefined, { style: 'currency', currency: 'USD' })
+      detailRows.push(`<div class="detail-row"><span class="detail-label">Amount</span><span class="detail-value">${formatted}</span></div>`) 
+    }
+  }
+
+  // Build CTA target based on context
+  const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000'
+  let ctaHref = `${baseUrl}/app/notifications`
+  let ctaText = 'View in LIA Admin Dashboard'
+  if (payload?.taskId) {
+    ctaHref = `${baseUrl}/app/tasks/${payload.taskId}`
+    ctaText = 'Open Task'
+  } else if (payload?.appointmentId) {
+    ctaHref = `${baseUrl}/app/appointments/${payload.appointmentId}`
+    ctaText = 'Open Appointment'
+  } else if (notification.type?.startsWith('PAYMENT') || payload?.transactionId) {
+    ctaHref = `${baseUrl}/app/finance`
+    ctaText = 'Open Finance'
+  }
+
   return `
     <!DOCTYPE html>
     <html lang="en">
@@ -345,34 +428,13 @@ const generateEmailTemplate = (notification, logoUrl = null) => {
           
           <!-- Notification Details -->
           <div class="notification-details">
-            <div class="detail-row">
-              <span class="detail-label">Notification Type</span>
-              <span class="detail-value">${notification.type.replace(/_/g, ' ')}</span>
-            </div>
-            <div class="detail-row">
-              <span class="detail-label">Time</span>
-              <span class="detail-value">${new Date(notification.createdAt).toLocaleString('en-US', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                timeZoneName: 'short'
-              })}</span>
-            </div>
-            <div class="detail-row">
-              <span class="detail-label">Priority</span>
-              <span class="detail-value">${getNotificationPriority(notification.type)}</span>
-            </div>
-            </div>
+            ${detailRows.join('')}
+          </div>
             
           <!-- Call to Action -->
           <div class="cta-container">
-            <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/app/notifications" class="cta-button">
-              View in LIA Admin Dashboard
-              </a>
-            </div>
+            <a href="${ctaHref}" class="cta-button">${ctaText}</a>
+          </div>
           </div>
           
         <!-- Footer -->
