@@ -1,0 +1,229 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  firstName String
+  lastName  String
+  avatar    String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  tasks         Task[]
+  appointments  Appointment[]
+  transactions  Transaction[]
+  notifications Notification[]
+  settings      UserSettings?
+  categories    Category[]
+
+  @@map("users")
+}
+
+// User settings model
+model UserSettings {
+  id                String  @id @default(cuid())
+  userId            String  @unique
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Theme preferences
+  theme             String  @default("system") // light, dark, system
+  
+  // Notification preferences
+  emailNotifications Boolean @default(true)
+  smsNotifications   Boolean @default(false)
+  whatsappNotifications Boolean @default(false)
+  
+  // Language and timezone
+  language          String  @default("en")
+  timezone          String  @default("UTC")
+  
+  // Privacy settings
+  profileVisibility String  @default("private") // public, private, friends
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("user_settings")
+}
+
+// Task model
+model Task {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  status      TaskStatus @default(PENDING)
+  priority    Priority  @default(MEDIUM)
+  dueDate     DateTime?
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId  String?
+  category    Category? @relation(fields: [categoryId], references: [id])
+  tags        TaskTag[]
+
+  @@map("tasks")
+}
+
+// Task category model
+model Category {
+  id          String   @id @default(cuid())
+  name        String
+  color       String   @default("#3B82F6")
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks       Task[]
+
+  @@map("categories")
+}
+
+// Task tag model
+model TaskTag {
+  id        String   @id @default(cuid())
+  name      String
+  color     String   @default("#6B7280")
+  createdAt DateTime @default(now())
+  
+  // Relations
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@map("task_tags")
+}
+
+// Appointment model
+model Appointment {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  startTime   DateTime
+  endTime     DateTime
+  location    String?
+  isAllDay    Boolean  @default(false)
+  status      AppointmentStatus @default(SCHEDULED)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attendees   AppointmentAttendee[]
+
+  @@map("appointments")
+}
+
+// Appointment attendee model
+model AppointmentAttendee {
+  id            String   @id @default(cuid())
+  name          String
+  email         String?
+  phone         String?
+  status        AttendeeStatus @default(PENDING)
+  createdAt     DateTime @default(now())
+  
+  // Relations
+  appointmentId String
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@map("appointment_attendees")
+}
+
+// Transaction model
+model Transaction {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  amount      Decimal  @db.Decimal(10, 2)
+  type        TransactionType
+  category    String
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("transactions")
+}
+
+// Notification model
+model Notification {
+  id        String   @id @default(cuid())
+  title     String
+  message   String
+  type      NotificationType
+  isRead    Boolean  @default(false)
+  data      Json?    // Additional data for the notification
+  createdAt DateTime @default(now())
+  
+  // Relations
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+// Enums
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum AttendeeStatus {
+  PENDING
+  CONFIRMED
+  DECLINED
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+  TRANSFER
+}
+
+enum NotificationType {
+  TASK_REMINDER
+  APPOINTMENT_REMINDER
+  PAYMENT_DUE
+  SYSTEM_UPDATE
+  GENERAL
+}
