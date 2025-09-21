@@ -213,7 +213,7 @@ export default function Notifications() {
               {bulkActionLoading === 'mark-all-read' ? (
                 <RefreshCw className="h-4 w-4 inline mr-2 animate-spin" />
               ) : (
-                <CheckCircle className="h-4 w-4 inline mr-2" />
+              <CheckCircle className="h-4 w-4 inline mr-2" />
               )}
               {bulkActionLoading === 'mark-all-read' ? 'Processing...' : 'Mark all as read'}
             </button>
@@ -228,7 +228,7 @@ export default function Notifications() {
                 <Trash2 className="h-4 w-4 inline mr-2" />
               )}
               {bulkActionLoading === 'delete-all' ? 'Deleting...' : 'Delete all'}
-            </button>
+        </button>
           </div>
         </div>
       </div>
@@ -411,11 +411,11 @@ export default function Notifications() {
                             {actionLoading === notification.id ? (
                               <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
                             ) : (
-                              <Check className="h-3 w-3 mr-1" />
+                            <Check className="h-3 w-3 mr-1" />
                             )}
                             {actionLoading === notification.id ? 'Processing...' : 'Mark Read'}
-                          </button>
-                        )}
+                    </button>
+                  )}
                         
                         <button 
                           onClick={() => deleteNotification(notification.id)}
@@ -425,10 +425,10 @@ export default function Notifications() {
                           {actionLoading === notification.id ? (
                             <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
                           ) : (
-                            <Trash2 className="h-3 w-3 mr-1" />
+                          <Trash2 className="h-3 w-3 mr-1" />
                           )}
                           {actionLoading === notification.id ? 'Deleting...' : 'Delete'}
-                        </button>
+                  </button>
                 </div>
               </div>
             </div>

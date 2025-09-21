@@ -72,7 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       // Set user
       setUser(user)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login failed:', error)
       throw error
     }
