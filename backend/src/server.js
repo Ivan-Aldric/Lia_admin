@@ -15,6 +15,7 @@ import financeRoutes from './routes/finance.js'
 import notificationRoutes from './routes/notifications.js'
 import settingsRoutes from './routes/settings.js'
 import testNotificationRoutes from './routes/test-notifications.js'
+import dashboardRoutes from './routes/dashboard.js'
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler.js'
@@ -201,6 +202,7 @@ app.use('/api/finance', financeRoutes)
 app.use('/api/notifications', notificationRoutes)
 app.use('/api/settings', settingsRoutes)
 app.use('/api/test', testNotificationRoutes)
+app.use('/api/dashboard', dashboardRoutes)
 
 // 404 handler
 app.use(notFound)

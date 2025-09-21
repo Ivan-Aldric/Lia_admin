@@ -32,6 +32,7 @@ import {
   Legend
 } from 'recharts'
 import { api } from '../services/api'
+import AIAssistant from '../components/AIAssistant'
 
 export default function Dashboard() {
   const navigate = useNavigate()
@@ -747,6 +748,9 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+      
+      {/* AI Assistant Widget */}
+      <AIAssistant />
     </div>
   )
 }

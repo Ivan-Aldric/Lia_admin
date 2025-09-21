@@ -429,12 +429,12 @@ const generateEmailTemplate = (notification, logoUrl = null) => {
           <!-- Notification Details -->
           <div class="notification-details">
             ${detailRows.join('')}
-          </div>
+            </div>
             
           <!-- Call to Action -->
           <div class="cta-container">
             <a href="${ctaHref}" class="cta-button">${ctaText}</a>
-          </div>
+            </div>
           </div>
           
         <!-- Footer -->

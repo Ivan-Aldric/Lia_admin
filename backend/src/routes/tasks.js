@@ -258,7 +258,7 @@ router.patch('/:id/complete', async (req, res, next) => {
 // @route   GET /api/tasks/recent
 // @desc    Get recent tasks for the authenticated user
 // @access  Private
-router.get('/recent', async (req, res, next) => {
+router.get('/recent', authMiddleware, async (req, res, next) => {
   try {
     const { limit = 5 } = req.query
 

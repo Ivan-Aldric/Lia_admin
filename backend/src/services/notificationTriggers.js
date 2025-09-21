@@ -32,13 +32,15 @@ export const createAndSendNotification = async (userId, type, title, message, da
       createdAt: { gte: startOfDay, lte: endOfDay },
       ...(resourceIdKey && resourceIdVal
         ? (
-            data?.reminderType
-              ? { AND: [
-                  { data: { contains: `"${resourceIdKey}":"${resourceIdVal}"` } },
-                  { data: { contains: `"reminderType":"${data.reminderType}"` } }
-                ] }
-              : { data: { contains: `"${resourceIdKey}":"${resourceIdVal}"` } }
-          )
+          data?.reminderType
+            ? {
+              AND: [
+                { data: { contains: `"${resourceIdKey}":"${resourceIdVal}"` } },
+                { data: { contains: `"reminderType":"${data.reminderType}"` } }
+              ]
+            }
+            : { data: { contains: `"${resourceIdKey}":"${resourceIdVal}"` } }
+        )
         : { title, message }),
     }
 
@@ -321,7 +323,7 @@ export const updateTasksToInProgress = async () => {
       try {
         await prisma.task.update({
           where: { id: task.id },
-          data: { 
+          data: {
             status: 'IN_PROGRESS',
             updatedAt: new Date()
           },
@@ -333,8 +335,8 @@ export const updateTasksToInProgress = async () => {
           'TASK_REMINDER',
           'Task Status Update',
           `Your task "${task.title}" has been automatically moved to "In Progress" status as it is due today (${new Date(task.dueDate).toLocaleDateString()}). Please ensure timely completion.`,
-          { 
-            taskId: task.id, 
+          {
+            taskId: task.id,
             taskTitle: task.title,
             oldStatus: 'PENDING',
             newStatus: 'IN_PROGRESS'
@@ -392,7 +394,7 @@ export const checkDayBeforeReminders = async () => {
   try {
     const now = new Date()
     const currentHour = now.getHours()
-    
+
     // Only run at 7 AM and 8 PM
     if (currentHour !== 7 && currentHour !== 8) {
       return
@@ -451,8 +453,8 @@ export const checkDayBeforeReminders = async () => {
         'TASK_REMINDER',
         'Task Due Tomorrow',
         `Reminder: Your task "${task.title}" is due tomorrow (${new Date(task.dueDate).toLocaleDateString()}). Please ensure you're prepared to complete it on time.`,
-        { 
-          taskId: task.id, 
+        {
+          taskId: task.id,
           taskTitle: task.title,
           dueDate: task.dueDate,
           reminderType: 'day_before'
@@ -467,8 +469,8 @@ export const checkDayBeforeReminders = async () => {
         'APPOINTMENT_REMINDER',
         'Appointment Tomorrow',
         `Reminder: You have an appointment "${appointment.title}" tomorrow at ${new Date(appointment.startTime).toLocaleString()}${appointment.location ? ` at ${appointment.location}` : ''}. Please prepare accordingly.`,
-        { 
-          appointmentId: appointment.id, 
+        {
+          appointmentId: appointment.id,
           appointmentTitle: appointment.title,
           startTime: appointment.startTime,
           reminderType: 'day_before'
@@ -487,7 +489,7 @@ export const checkDueTodayReminders = async () => {
   try {
     const now = new Date()
     const currentHour = now.getHours()
-    
+
     // Only run at 6 AM
     if (currentHour !== 6) {
       return
@@ -545,8 +547,8 @@ export const checkDueTodayReminders = async () => {
         'TASK_REMINDER',
         'Task Due Today',
         `Final Reminder: Your task "${task.title}" is due today (${new Date(task.dueDate).toLocaleDateString()}). Please complete it as soon as possible to meet your deadline.`,
-        { 
-          taskId: task.id, 
+        {
+          taskId: task.id,
           taskTitle: task.title,
           dueDate: task.dueDate,
           reminderType: 'due_today'
@@ -561,8 +563,8 @@ export const checkDueTodayReminders = async () => {
         'APPOINTMENT_REMINDER',
         'Appointment Today',
         `Final Reminder: You have an appointment "${appointment.title}" today at ${new Date(appointment.startTime).toLocaleString()}${appointment.location ? ` at ${appointment.location}` : ''}. Please ensure you're ready and on time.`,
-        { 
-          appointmentId: appointment.id, 
+        {
+          appointmentId: appointment.id,
           appointmentTitle: appointment.title,
           startTime: appointment.startTime,
           reminderType: 'due_today'
@@ -676,7 +678,7 @@ export const updateOverdueTasksToCompleted = async () => {
       try {
         await prisma.task.update({
           where: { id: task.id },
-          data: { 
+          data: {
             status: 'COMPLETED',
             completedAt: new Date(),
             updatedAt: new Date()
@@ -689,8 +691,8 @@ export const updateOverdueTasksToCompleted = async () => {
           'TASK_REMINDER',
           'Task Automatically Completed',
           `Your task "${task.title}" has been automatically marked as completed since it was overdue (due date: ${new Date(task.dueDate).toLocaleDateString()}). The task was moved from "In Progress" to "Completed" status.`,
-          { 
-            taskId: task.id, 
+          {
+            taskId: task.id,
             taskTitle: task.title,
             oldStatus: 'IN_PROGRESS',
             newStatus: 'COMPLETED',
@@ -751,7 +753,7 @@ export const updateAppointmentsToConfirmed = async () => {
       try {
         await prisma.appointment.update({
           where: { id: appointment.id },
-          data: { 
+          data: {
             status: 'CONFIRMED',
             updatedAt: new Date()
           },
@@ -763,8 +765,8 @@ export const updateAppointmentsToConfirmed = async () => {
           'APPOINTMENT_REMINDER',
           'Appointment Status Update',
           `Your appointment "${appointment.title}" has been automatically moved to "Confirmed" status as it is scheduled for today (${new Date(appointment.startTime).toLocaleDateString()}). Please ensure you're prepared and arrive on time.`,
-          { 
-            appointmentId: appointment.id, 
+          {
+            appointmentId: appointment.id,
             appointmentTitle: appointment.title,
             oldStatus: 'SCHEDULED',
             newStatus: 'CONFIRMED',
@@ -827,7 +829,7 @@ export const updateAppointmentsToCompleted = async () => {
       try {
         await prisma.appointment.update({
           where: { id: appointment.id },
-          data: { 
+          data: {
             status: 'COMPLETED',
             updatedAt: new Date()
           },
@@ -839,8 +841,8 @@ export const updateAppointmentsToCompleted = async () => {
           'APPOINTMENT_REMINDER',
           'Appointment Automatically Completed',
           `Your appointment "${appointment.title}" has been automatically marked as completed since it has ended (end time: ${new Date(appointment.endTime).toLocaleString()}). The appointment was moved from "Confirmed" to "Completed" status.`,
-          { 
-            appointmentId: appointment.id, 
+          {
+            appointmentId: appointment.id,
             appointmentTitle: appointment.title,
             oldStatus: 'CONFIRMED',
             newStatus: 'COMPLETED',
