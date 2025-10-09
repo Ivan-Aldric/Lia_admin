@@ -48,7 +48,7 @@ export default function Login() {
       await login(formData.email, formData.password)
       navigate("/app")
     } catch (err: any) {
-      setError(err.message || "Login failed. Please try again.")
+      setError("Incorrect credentials")
     } finally {
       setLoading(false)
     }

@@ -16,7 +16,8 @@ import {
   ArrowDownRight,
   CheckCircle,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  Trash2
 } from 'lucide-react'
 import { 
   AreaChart, 
@@ -281,9 +282,36 @@ export default function Appointments() {
   // View state
   const [showView, setShowView] = useState(false)
   const [viewAppt, setViewAppt] = useState<any | null>(null)
+  
+  // Delete state
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deletingAppointment, setDeletingAppointment] = useState<any | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const openView = (appt: any) => {
     setViewAppt(appt)
     setShowView(true)
+  }
+
+  const openDeleteModal = (appt: any) => {
+    setDeletingAppointment(appt)
+    setShowDeleteModal(true)
+  }
+
+  const handleDeleteAppointment = async () => {
+    if (!deletingAppointment) return
+    
+    try {
+      setDeleting(true)
+      await appointmentsAPI.deleteAppointment(deletingAppointment.id)
+      setShowDeleteModal(false)
+      setDeletingAppointment(null)
+      refresh()
+    } catch (err: any) {
+      console.error('Failed to delete appointment:', err)
+      alert('Failed to delete appointment. Please try again.')
+    } finally {
+      setDeleting(false)
+    }
   }
 
   return (
@@ -802,18 +830,25 @@ export default function Appointments() {
                     
                     <div className="flex flex-col sm:flex-row lg:flex-col items-stretch gap-3 lg:w-48">
                       <button 
-                        className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors inline-flex items-center justify-center" 
+                        className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors inline-flex items-center justify-center text-xs font-medium" 
                         onClick={() => openEdit(appointment)}
                       >
-                        <Edit3 className="h-4 w-4 mr-2" />
+                        <Edit3 className="h-3.5 w-3.5 mr-2" />
                         Edit
                       </button>
                       <button 
-                        className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors inline-flex items-center justify-center" 
+                        className="px-3 py-1.5 bg-primary-600/80 text-white rounded-md hover:bg-primary-600 transition-colors inline-flex items-center justify-center text-xs font-medium" 
                         onClick={() => openView(appointment)}
                       >
-                        <Eye className="h-4 w-4 mr-2" />
+                        <Eye className="h-3.5 w-3.5 mr-2" />
                         {appointment.status === 'CANCELLED' ? 'Reschedule' : 'View'}
+                      </button>
+                      <button 
+                        className="px-3 py-1.5 bg-red-600/80 text-white rounded-md hover:bg-red-600 transition-colors inline-flex items-center justify-center text-xs font-medium" 
+                        onClick={() => openDeleteModal(appointment)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5 mr-2" />
+                        Delete
                       </button>
                     </div>
                   </div>
@@ -913,6 +948,12 @@ export default function Appointments() {
                               onClick={() => openView(appointment)}
                             >
                               View
+                            </button>
+                            <button 
+                              className="px-3 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-sm" 
+                              onClick={() => openDeleteModal(appointment)}
+                            >
+                              Delete
                             </button>
                           </div>
                         </div>
@@ -1184,6 +1225,60 @@ export default function Appointments() {
               Edit Appointment
             </button>
       </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && deletingAppointment && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full">
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
+                  <Trash2 className="w-5 h-5 text-red-600 dark:text-red-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Delete Appointment</h3>
+                  <p className="text-gray-600 dark:text-gray-400">This action cannot be undone.</p>
+                </div>
+              </div>
+              
+              <div className="mb-6">
+                <p className="text-gray-700 dark:text-gray-300">
+                  Are you sure you want to delete <strong>"{deletingAppointment.title}"</strong>?
+                </p>
+              </div>
+              
+              <div className="flex items-center justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => { setShowDeleteModal(false); setDeletingAppointment(null) }}
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  disabled={deleting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteAppointment}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors flex items-center gap-2"
+                  disabled={deleting}
+                >
+                  {deleting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 size={16} />
+                      Delete Appointment
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

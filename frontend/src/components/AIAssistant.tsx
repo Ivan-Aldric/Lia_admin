@@ -160,18 +160,31 @@ const AIAssistant: React.FC = () => {
       // Try the main endpoint first
       let response
       try {
-        response = await api.post('/dashboard/ai-chat', {
-          message: userMessage.content,
-          context: summary
-        })
+        console.log('Attempting main AI chat endpoint...')
+        response = await api.post(
+          '/dashboard/ai-chat',
+          {
+            message: userMessage.content,
+            context: summary,
+            history: messages.slice(-10).map(m => ({ id: m.id, type: m.type, content: m.content }))
+          },
+          {
+            headers: { 'X-Skip-Auth-Redirect': 'true' }
+          }
+        )
+        console.log('Main endpoint succeeded:', response.data)
       } catch (authError: any) {
-        console.log('Main endpoint failed, trying test endpoint:', authError.response?.status)
+        console.log('Main endpoint failed, trying test endpoint:', authError.response?.status, authError.message)
         
         // If authentication fails, try the test endpoint
         if (authError.response?.status === 401) {
-          response = await api.post('/dashboard/test-ai-chat', {
-            message: userMessage.content
-          })
+          console.log('Falling back to test endpoint...')
+          response = await api.post(
+            '/dashboard/test-ai-chat',
+            { message: userMessage.content },
+            { headers: { 'X-Skip-Auth-Redirect': 'true' } }
+          )
+          console.log('Test endpoint succeeded:', response.data)
         } else {
           throw authError
         }

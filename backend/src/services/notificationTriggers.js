@@ -35,11 +35,11 @@ export const createAndSendNotification = async (userId, type, title, message, da
           data?.reminderType
             ? {
               AND: [
-                { data: { contains: `"${resourceIdKey}":"${resourceIdVal}"` } },
-                { data: { contains: `"reminderType":"${data.reminderType}"` } }
+                { data: { path: [resourceIdKey], string_contains: String(resourceIdVal) } },
+                { data: { path: ['reminderType'], string_contains: String(data.reminderType) } }
               ]
             }
-            : { data: { contains: `"${resourceIdKey}":"${resourceIdVal}"` } }
+            : { data: { path: [resourceIdKey], string_contains: String(resourceIdVal) } }
         )
         : { title, message }),
     }
@@ -57,7 +57,7 @@ export const createAndSendNotification = async (userId, type, title, message, da
         message,
         type,
         userId,
-        data: data ? JSON.stringify(data) : null,
+        data: data ?? null,
       },
     })
 
@@ -612,8 +612,8 @@ export const checkTaskCreationFollowUps = async () => {
           type: 'TASK_REMINDER',
           createdAt: { gte: startOfDay, lte: endOfDay },
           AND: [
-            { data: { contains: `"taskId":"${task.id}"` } },
-            { data: { contains: `"reminderType":"follow_up_7h"` } },
+            { data: { path: ['taskId'], string_contains: String(task.id) } },
+            { data: { path: ['reminderType'], string_contains: 'follow_up_7h' } },
           ],
         },
       })

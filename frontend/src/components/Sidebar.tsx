@@ -91,8 +91,7 @@ export default function Sidebar() {
     try {
       setNotificationsLoading(true)
       const response = await notificationsAPI.getNotifications({ limit: 1 })
-      const notificationData = response.data.data
-      setUnreadCount(notificationData.unreadCount || 0)
+      setUnreadCount(response.data?.unreadCount || 0)
     } catch (error) {
       console.error('Failed to fetch notification count:', error)
       setUnreadCount(0)

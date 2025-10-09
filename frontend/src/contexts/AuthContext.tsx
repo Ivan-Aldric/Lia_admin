@@ -74,7 +74,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(user)
     } catch (error: any) {
       console.error('Login failed:', error)
-      throw error
+      // Throw a simple error message for wrong credentials
+      throw new Error('Incorrect credentials')
     }
   }
 

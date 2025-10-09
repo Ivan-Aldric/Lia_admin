@@ -204,10 +204,9 @@ export default function Header() {
   const fetchNotifications = async () => {
     setNotificationsLoading(true)
     try {
-      const response = await notificationsAPI.getNotifications({ limit: 5 })
-      const notificationData = response.data.data
-      setNotifications(notificationData.notifications || [])
-      setUnreadCount(notificationData.unreadCount || 0)
+      const res = await notificationsAPI.getNotifications({ limit: 5 })
+      setNotifications(res.data?.data || [])
+      setUnreadCount(res.data?.unreadCount || 0)
     } catch (error) {
       console.error('Failed to fetch notifications:', error)
       // Set fallback data
@@ -215,6 +214,16 @@ export default function Header() {
       setUnreadCount(0)
     } finally {
       setNotificationsLoading(false)
+    }
+  }
+
+  // Lightweight unread count fetcher for polling/focus refresh
+  const fetchUnreadCount = async () => {
+    try {
+      const res = await notificationsAPI.getNotifications({ limit: 1 })
+      setUnreadCount(res.data?.unreadCount || 0)
+    } catch (error) {
+      // keep silent to avoid noise; badge will show 0 on error
     }
   }
 
@@ -255,6 +264,21 @@ export default function Header() {
       fetchNotifications()
     }
   }, [isNotificationsOpen])
+
+  // Poll unread count and refresh on window focus
+  useEffect(() => {
+    let interval: number | undefined
+    if (user) {
+      fetchUnreadCount()
+      interval = window.setInterval(fetchUnreadCount, 30000)
+      const handleFocus = () => fetchUnreadCount()
+      window.addEventListener('focus', handleFocus)
+      return () => {
+        if (interval) window.clearInterval(interval)
+        window.removeEventListener('focus', handleFocus)
+      }
+    }
+  }, [user])
 
   // Keyboard shortcuts
   useEffect(() => {

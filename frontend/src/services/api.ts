@@ -1,8 +1,27 @@
 import axios from 'axios'
 
 // Create axios instance with base configuration
+const getApiBaseURL = () => {
+  // Check if we have an environment variable
+  if ((import.meta as any).env?.VITE_API_URL) {
+    return (import.meta as any).env.VITE_API_URL
+  }
+  
+  // Auto-detect the API URL based on current host
+  const currentHost = window.location.hostname
+  if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
+    return 'http://localhost:5000/api'
+  } else {
+    // For network access, use the same host but port 5000
+    return `http://${currentHost}:5000/api`
+  }
+}
+
+const apiBaseURL = getApiBaseURL()
+console.log('🔗 API Base URL:', apiBaseURL)
+
 export const api = axios.create({
-  baseURL: (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000/api',
+  baseURL: apiBaseURL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -29,7 +48,17 @@ api.interceptors.response.use(
     return response
   },
   (error) => {
+    console.log('API Error:', error.response?.status, error.config?.url, error.config?.headers)
     if (error.response?.status === 401) {
+      // Allow callers to opt out of automatic redirect on 401
+      const skipAuthRedirect = !!(
+        error.config?.headers?.['X-Skip-Auth-Redirect'] ||
+        error.config?.headers?.['x-skip-auth-redirect']
+      )
+      console.log('401 error, skip redirect:', skipAuthRedirect)
+      if (skipAuthRedirect) {
+        return Promise.reject(error)
+      }
       // Unauthorized - clear token and redirect to login
       localStorage.removeItem('lia-token')
       delete api.defaults.headers.common['Authorization']

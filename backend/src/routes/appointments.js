@@ -260,4 +260,41 @@ router.delete('/:id', async (req, res, next) => {
   }
 })
 
+// @route   GET /api/appointments/upcoming
+// @desc    Get upcoming appointments for the authenticated user
+// @access  Private
+router.get('/upcoming', async (req, res, next) => {
+  try {
+    const { limit = 5 } = req.query
+    const now = new Date()
+
+    // Get upcoming appointments
+    const upcomingAppointments = await prisma.appointment.findMany({
+      where: {
+        userId: req.userId,
+        startTime: {
+          gte: now,
+        },
+        status: {
+          in: ['SCHEDULED', 'CONFIRMED'],
+        },
+      },
+      orderBy: {
+        startTime: 'asc',
+      },
+      take: parseInt(limit),
+      include: {
+        category: true,
+      },
+    })
+
+    res.json({
+      success: true,
+      data: upcomingAppointments,
+    })
+  } catch (error) {
+    next(error)
+  }
+})
+
 export default router

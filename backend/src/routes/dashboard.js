@@ -1,8 +1,59 @@
 import express from 'express'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 import { prisma } from '../server.js'
 import { authMiddleware } from '../middleware/auth.js'
 
 const router = express.Router()
+
+// Gemini setup (lazy initialized)
+let geminiClient = null
+function getGeminiClient() {
+  const apiKey = process.env.GEMINI_API_KEY
+  if (!apiKey) return null
+  if (!geminiClient) {
+    geminiClient = new GoogleGenerativeAI(apiKey)
+  }
+  return geminiClient
+}
+
+async function generateWithGemini(userMessage, structuredData, chatHistory = []) {
+  const client = getGeminiClient()
+  if (!client) return null
+  try {
+    const model = client.getGenerativeModel({ model: 'gemini-1.5-pro' })
+
+    const systemPrompt = `You are LIA Admin's AI assistant. Answer clearly and concisely.
+Use the provided JSON context about the user's tasks, appointments, and finances to answer.
+You also receive recent system events (notifications). You may summarize or reference them when relevant.
+If the question is unrelated to the data, still try to be helpful.
+Never fabricate numbers; when citing metrics, derive them from the JSON.`
+
+    // Build a concise chat transcript
+    const historyText = chatHistory
+      .slice(-10)
+      .map(m => `${m.type === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
+      .join('\n')
+
+    const input = [
+      { text: systemPrompt },
+      { text: `Conversation so far (most recent last):\n${historyText || '(no prior messages)'}` },
+      { text: `User message: ${userMessage}` },
+      { text: `JSON context (tasks, appointments, transactions, recent activity, notifications):\n${JSON.stringify(structuredData).slice(0, 100000)}` },
+    ]
+
+    const result = await model.generateContent(input)
+    const responseText = result?.response?.text?.() || result?.response?.candidates?.[0]?.content?.parts?.[0]?.text
+    if (!responseText) return null
+
+    return {
+      message: responseText,
+      data: null,
+    }
+  } catch (err) {
+    console.error('Gemini generation failed:', err?.message || err)
+    return null
+  }
+}
 
 // AI-powered account summary endpoint
 router.get('/ai-summary', authMiddleware, async (req, res, next) => {
@@ -237,7 +288,7 @@ function generateAIInsights(data) {
 // AI Chat endpoint
 router.post('/ai-chat', authMiddleware, async (req, res, next) => {
   try {
-    const { message, context } = req.body
+    const { message, context, history } = req.body
     const userId = req.userId
 
     console.log('AI Chat request:', { message, userId, hasContext: !!context })
@@ -254,7 +305,7 @@ router.post('/ai-chat', authMiddleware, async (req, res, next) => {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
 
-    const [tasks, appointments, transactions, recentTasks, recentAppointments] = await Promise.all([
+    const [tasks, appointments, transactions, recentTasks, recentAppointments, recentNotifications] = await Promise.all([
       prisma.task.findMany({
         where: { userId },
         select: { id: true, title: true, status: true, dueDate: true, createdAt: true, priority: true }
@@ -287,18 +338,32 @@ router.post('/ai-chat', authMiddleware, async (req, res, next) => {
         orderBy: { createdAt: 'desc' },
         take: 10,
         select: { title: true, status: true, createdAt: true }
+      }),
+      prisma.notification.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        select: { id: true, title: true, type: true, isRead: true, createdAt: true }
       })
     ])
 
-    // Generate AI response based on message and data
-    const response = await generateAIResponse(message, {
+    // Prepare combined data
+    const combinedData = {
       tasks,
       appointments,
       transactions,
       recentTasks,
       recentAppointments,
+      notifications: recentNotifications,
       context: context || {}
-    })
+    }
+
+    // Try Gemini first if configured
+    let response = await generateWithGemini(message, combinedData, Array.isArray(history) ? history : [])
+    if (!response) {
+      // Fallback to rule-based generator
+      response = await generateAIResponse(message, combinedData)
+    }
 
     console.log('AI Response generated:', { message: response.message, hasData: !!response.data })
 
@@ -685,7 +750,7 @@ router.get('/test-ai-summary', async (req, res) => {
 // Test endpoint for AI chat
 router.post('/test-ai-chat', async (req, res) => {
   try {
-    const { message } = req.body
+    const { message, history } = req.body
     
     if (!message) {
       return res.status(400).json({
@@ -712,7 +777,11 @@ router.post('/test-ai-chat', async (req, res) => {
       context: {}
     }
 
-    const response = await generateAIResponse(message, mockData)
+    // Try Gemini first if configured, then fallback to rule-based
+    let response = await generateWithGemini(message, mockData, Array.isArray(history) ? history : [])
+    if (!response) {
+      response = await generateAIResponse(message, mockData)
+    }
     
     res.json({
       success: true,

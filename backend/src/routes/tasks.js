@@ -289,7 +289,7 @@ router.get('/recent', authMiddleware, async (req, res, next) => {
 // @route   GET /api/tasks/stats
 // @desc    Get task statistics
 // @access  Private
-router.get('/stats', async (req, res, next) => {
+router.get('/stats', authMiddleware, async (req, res, next) => {
   try {
     // Get task counts by status
     const [total, pending, inProgress, completed] = await Promise.all([
