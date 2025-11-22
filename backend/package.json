@@ -18,7 +18,8 @@
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
-    "db:seed": "node src/scripts/seed.js"
+    "db:seed": "node src/scripts/seed.js",
+    "security:audit": "node scripts/security-audit.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

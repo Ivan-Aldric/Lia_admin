@@ -53,10 +53,21 @@ export const errorHandler = (err, req, res, next) => {
   // Default error response
   const statusCode = error.statusCode || 500
   const message = error.message || 'Internal Server Error'
+  const isDevelopment = process.env.NODE_ENV === 'development'
+
+  // Sanitize error messages in production to prevent information disclosure
+  const sanitizedMessage = isDevelopment 
+    ? message 
+    : (statusCode >= 500 
+      ? 'An error occurred. Please try again later.' 
+      : message) // Keep client errors (4xx) as-is, sanitize server errors (5xx)
 
   res.status(statusCode).json({
     success: false,
-    error: message,
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+    error: sanitizedMessage,
+    ...(isDevelopment && { 
+      stack: err.stack,
+      details: message 
+    })
   })
 }

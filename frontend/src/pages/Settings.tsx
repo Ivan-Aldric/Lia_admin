@@ -26,6 +26,7 @@ import { useTheme } from '../contexts/ThemeContext'
 import { useLanguage } from '../contexts/LanguageContext'
 import { authAPI } from '../services/api'
 import { settingsAPI } from '../services/api'
+import { validatePassword, getPasswordRequirements } from '../utils/passwordValidation'
 
 export default function Settings() {
   const { user, updateUser } = useAuth()
@@ -138,10 +139,20 @@ export default function Settings() {
     e.preventDefault()
     setPasswordMessage(null)
     setPasswordError(null)
+    
+    // Validate passwords match
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       setPasswordError("Passwords don't match")
       return
     }
+    
+    // Validate password requirements
+    const passwordValidation = validatePassword(passwordData.newPassword)
+    if (!passwordValidation.isValid) {
+      setPasswordError(passwordValidation.errors[0] || "Password does not meet requirements")
+      return
+    }
+    
     setLoading(true)
     try {
       await authAPI.changePassword(passwordData.currentPassword, passwordData.newPassword)
@@ -436,7 +447,7 @@ export default function Settings() {
                           className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors duration-200"
                           placeholder="Enter new password"
                           required
-                          minLength={6}
+                          minLength={8}
                         />
                       </div>
 
@@ -452,7 +463,7 @@ export default function Settings() {
                           className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors duration-200"
                           placeholder="Confirm new password"
                           required
-                          minLength={6}
+                          minLength={8}
                         />
                       </div>
                     </div>
@@ -461,9 +472,9 @@ export default function Settings() {
                     <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
                       <h4 className="text-sm font-medium text-blue-900 dark:text-blue-200 mb-2">Password Requirements:</h4>
                       <ul className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
-                        <li>• At least 6 characters long</li>
-                        <li>• Mix of letters and numbers recommended</li>
-                        <li>• Avoid common passwords</li>
+                        {getPasswordRequirements().map((req, index) => (
+                          <li key={index}>• {req}</li>
+                        ))}
                       </ul>
                     </div>
 

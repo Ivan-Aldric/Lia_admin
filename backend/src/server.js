@@ -20,12 +20,24 @@ import dashboardRoutes from './routes/dashboard.js'
 // Import middleware
 import { errorHandler } from './middleware/errorHandler.js'
 import { notFound } from './middleware/notFound.js'
+import { sanitizeInput } from './middleware/sanitize.js'
 
 // Import services
 import { startNotificationCron } from './services/cronService.js'
 
+// Import config
+import { validateEnv } from './config/env.js'
+
 // Load environment variables
 dotenv.config()
+
+// Validate environment variables
+try {
+  validateEnv()
+} catch (error) {
+  console.error('❌ Environment validation failed:', error.message)
+  process.exit(1)
+}
 
 // Initialize Express app
 const app = express()
@@ -79,42 +91,89 @@ const checkConnection = async () => {
 // Check connection every 30 seconds
 setInterval(checkConnection, 30000)
 
-// Rate limiting - very generous limits for development
+// Rate limiting - different limits for dev vs production, but always enforced
+const isDevelopment = process.env.NODE_ENV === 'development'
 const limiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 10000, // Very high limit for development
+  max: isDevelopment 
+    ? parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 1000 // More lenient in dev, but still limited
+    : parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100, // Stricter in production
   message: {
     error: 'Too many requests from this IP, please try again later.',
   },
   standardHeaders: true,
   legacyHeaders: false,
-  // Skip rate limiting for health checks and API routes in development
+  // Only skip health checks, never skip entirely
   skip: (req) => {
-    if (process.env.NODE_ENV === 'development') {
-      return true // Skip rate limiting entirely in development
-    }
     return req.path.startsWith('/health')
   }
 })
 
+// Request ID tracking for security monitoring
+import crypto from 'crypto'
+app.use((req, res, next) => {
+  req.id = crypto.randomUUID()
+  res.setHeader('X-Request-ID', req.id)
+  next()
+})
+
 // Middleware
-app.use(helmet()) // Security headers
+// Enhanced security headers with CSP and HSTS
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"], // Allow inline styles for React
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'", "data:", "https:"],
+    },
+  },
+  hsts: {
+    maxAge: 31536000, // 1 year
+    includeSubDomains: true,
+    preload: true
+  },
+  crossOriginEmbedderPolicy: false, // Allow external resources if needed
+}))
 app.use(compression()) // Compress responses
 app.use(morgan('combined')) // Logging
 app.use(limiter) // Rate limiting
-// CORS configuration
-const allowedOrigins = [
-  process.env.FRONTEND_URL || 'http://localhost:3000',
-  'http://localhost:5173',
-  'http://localhost:3000',
-  'http://172.20.10.4:3000'
-]
+
+// CORS configuration - use environment variables, no hardcoded IPs
+const getAllowedOrigins = () => {
+  if (process.env.ALLOWED_ORIGINS) {
+    return process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+  }
+  // Default to frontend URL or common dev ports
+  const defaultOrigins = [
+    process.env.FRONTEND_URL || 'http://localhost:5173',
+    'http://localhost:5173',
+    'http://localhost:3000',
+  ]
+  return defaultOrigins
+}
+
+const allowedOrigins = getAllowedOrigins()
 
 app.use((req, res, next) => {
   const origin = req.headers.origin
+  
+  // Allow requests with no origin (like mobile apps or curl requests)
+  if (!origin) {
+    return next()
+  }
+  
   if (allowedOrigins.includes(origin)) {
     res.header('Access-Control-Allow-Origin', origin)
+  } else {
+    // Log unauthorized origin attempts in production
+    if (process.env.NODE_ENV === 'production') {
+      console.warn(`Blocked CORS request from unauthorized origin: ${origin}`)
+    }
   }
+  
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS')
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Skip-Auth-Redirect')
   res.header('Access-Control-Allow-Credentials', 'true')
@@ -126,11 +185,43 @@ app.use((req, res, next) => {
   }
 })
 
-app.use(express.json({ limit: '10mb' })) // Parse JSON bodies
-app.use(express.urlencoded({ extended: true, limit: '10mb' })) // Parse URL-encoded bodies
+// Request size limits - reduced for better security
+const jsonLimit = process.env.MAX_REQUEST_SIZE || '1mb'
+app.use(express.json({ limit: jsonLimit })) // Parse JSON bodies
+app.use(express.urlencoded({ extended: true, limit: jsonLimit })) // Parse URL-encoded bodies
 
-// Health check endpoints
-app.get('/health', (req, res) => {
+// Input sanitization - sanitize all user input to prevent XSS
+app.use(sanitizeInput)
+
+// Health check authentication middleware
+const healthAuth = (req, res, next) => {
+  // In development, allow without auth for convenience
+  if (process.env.NODE_ENV === 'development') {
+    return next()
+  }
+  
+  // In production, require authentication
+  const authHeader = req.headers.authorization
+  const healthSecret = process.env.HEALTH_CHECK_SECRET
+  
+  if (!healthSecret) {
+    // If no secret is set, allow access but log warning
+    console.warn('⚠️  HEALTH_CHECK_SECRET not set - health endpoints are publicly accessible')
+    return next()
+  }
+  
+  if (authHeader === `Bearer ${healthSecret}`) {
+    return next()
+  }
+  
+  res.status(401).json({ 
+    error: 'Unauthorized',
+    message: 'Health check endpoints require authentication'
+  })
+}
+
+// Health check endpoints - protected in production
+app.get('/health', healthAuth, (req, res) => {
   res.status(200).json({
     status: 'OK',
     timestamp: new Date().toISOString(),
@@ -140,7 +231,7 @@ app.get('/health', (req, res) => {
 })
 
 // Database health check
-app.get('/health/db', async (req, res) => {
+app.get('/health/db', healthAuth, async (req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`
     res.json({ 
@@ -150,17 +241,21 @@ app.get('/health/db', async (req, res) => {
     })
   } catch (error) {
     console.error('Database health check failed:', error)
+    // Don't expose detailed error in production
+    const errorMessage = process.env.NODE_ENV === 'production' 
+      ? 'Database connection failed'
+      : error.message
     res.status(500).json({ 
       status: 'ERROR', 
       database: 'Disconnected',
-      error: error.message,
+      ...(process.env.NODE_ENV === 'development' && { error: errorMessage }),
       timestamp: new Date().toISOString()
     })
   }
 })
 
 // Memory health check
-app.get('/health/memory', (req, res) => {
+app.get('/health/memory', healthAuth, (req, res) => {
   const memUsage = process.memoryUsage()
   const memInfo = {
     rss: Math.round(memUsage.rss / 1024 / 1024) + ' MB',
@@ -182,7 +277,7 @@ app.get('/health/memory', (req, res) => {
 })
 
 // System health check (combines all checks)
-app.get('/health/system', async (req, res) => {
+app.get('/health/system', healthAuth, async (req, res) => {
   const checks = {
     server: { status: 'OK', uptime: process.uptime() },
     database: { status: 'UNKNOWN' },
@@ -194,7 +289,10 @@ app.get('/health/system', async (req, res) => {
     await prisma.$queryRaw`SELECT 1`
     checks.database = { status: 'OK' }
   } catch (error) {
-    checks.database = { status: 'ERROR', error: error.message }
+    checks.database = { 
+      status: 'ERROR',
+      ...(process.env.NODE_ENV === 'development' && { error: error.message })
+    }
   }
   
   // Check memory

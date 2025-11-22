@@ -2,22 +2,48 @@ import express from 'express'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { body, validationResult } from 'express-validator'
+import rateLimit from 'express-rate-limit'
 import { prisma } from '../server.js'
 import { authMiddleware } from '../middleware/auth.js'
 
 const router = express.Router()
 
-// Validation middleware
+// Stricter rate limiting for authentication endpoints to prevent brute force
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // Limit each IP to 5 requests per windowMs
+  message: {
+    error: 'Too many authentication attempts, please try again later.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true, // Don't count successful requests
+})
+
+// Validation middleware with stronger password requirements
 const validateRegister = [
-  body('email').isEmail().normalizeEmail(),
-  body('password').isLength({ min: 6 }),
-  body('firstName').trim().isLength({ min: 1 }),
-  body('lastName').trim().isLength({ min: 1 }),
+  body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
+  body('password')
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters long')
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/)
+    .withMessage('Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)'),
+  body('firstName').trim().isLength({ min: 1 }).withMessage('First name is required'),
+  body('lastName').trim().isLength({ min: 1 }).withMessage('Last name is required'),
 ]
 
 const validateLogin = [
-  body('email').isEmail().normalizeEmail(),
-  body('password').exists(),
+  body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
+  body('password').notEmpty().withMessage('Password is required'),
+]
+
+const validatePasswordChange = [
+  body('currentPassword').notEmpty().withMessage('Current password is required'),
+  body('newPassword')
+    .isLength({ min: 8 })
+    .withMessage('New password must be at least 8 characters long')
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/)
+    .withMessage('New password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)'),
 ]
 
 // Generate JWT token
@@ -30,7 +56,7 @@ const generateToken = (userId) => {
 // @route   POST /api/auth/register
 // @desc    Register a new user
 // @access  Public
-router.post('/register', validateRegister, async (req, res, next) => {
+router.post('/register', authLimiter, validateRegister, async (req, res, next) => {
   try {
     // Check for validation errors
     const errors = validationResult(req)
@@ -103,7 +129,18 @@ router.post('/register', validateRegister, async (req, res, next) => {
 // @route   POST /api/auth/login
 // @desc    Login user
 // @access  Public
-router.post('/login', validateLogin, async (req, res, next) => {
+router.post('/login', authLimiter, validateLogin, async (req, res, next) => {
+  // Log failed login attempts for security monitoring
+  const logFailedAttempt = (email, reason) => {
+    console.warn('Security Event:', {
+      type: 'failed_login',
+      email,
+      reason,
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+      timestamp: new Date().toISOString(),
+    })
+  }
   try {
     // Check for validation errors
     const errors = validationResult(req)
@@ -123,6 +160,7 @@ router.post('/login', validateLogin, async (req, res, next) => {
     })
 
     if (!user) {
+      logFailedAttempt(email, 'user_not_found')
       return res.status(401).json({
         success: false,
         error: 'Invalid credentials',
@@ -132,6 +170,7 @@ router.post('/login', validateLogin, async (req, res, next) => {
     // Check password
     const isPasswordValid = await bcrypt.compare(password, user.password)
     if (!isPasswordValid) {
+      logFailedAttempt(email, 'invalid_password')
       return res.status(401).json({
         success: false,
         error: 'Invalid credentials',
@@ -236,17 +275,19 @@ router.put('/profile', authMiddleware, async (req, res, next) => {
 // @route   PUT /api/auth/change-password
 // @desc    Change user password
 // @access  Private
-router.put('/change-password', authMiddleware, async (req, res, next) => {
+router.put('/change-password', authMiddleware, validatePasswordChange, async (req, res, next) => {
   try {
-    const { currentPassword, newPassword } = req.body
-
-    // Validate new password
-    if (!newPassword || newPassword.length < 6) {
+    // Check for validation errors
+    const errors = validationResult(req)
+    if (!errors.isEmpty()) {
       return res.status(400).json({
         success: false,
-        error: 'New password must be at least 6 characters long',
+        error: 'Validation failed',
+        details: errors.array(),
       })
     }
+
+    const { currentPassword, newPassword } = req.body
 
     // Get user with password
     const user = await prisma.user.findUnique({

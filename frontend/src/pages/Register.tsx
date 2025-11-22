@@ -6,6 +6,7 @@ import { Link, useNavigate } from "react-router-dom"
 import { motion } from "framer-motion"
 import { User, Mail, Lock, Eye, EyeOff, Sparkles, ArrowRight, CheckCircle, AlertCircle, Github } from "lucide-react"
 import { useAuth } from "../contexts/AuthContext"
+import { validatePassword, getPasswordRequirements, getStrengthColor, getStrengthText } from "../utils/passwordValidation"
 
 export default function Register() {
   const { register } = useAuth()
@@ -49,9 +50,9 @@ export default function Register() {
       newValidation.email = emailRegex.test(value) || value === ''
     }
     if (name === 'password') {
-      const strength = calculatePasswordStrength(value)
-      setPasswordStrength(strength)
-      newValidation.password = value.length >= 6 || value === ''
+      const validation = validatePassword(value)
+      setPasswordStrength(validation.strength)
+      newValidation.password = validation.isValid || value === ''
     }
     if (name === 'confirmPassword') {
       newValidation.confirmPassword = value === formData.password || value === ''
@@ -60,30 +61,9 @@ export default function Register() {
     setValidation(newValidation)
   }
 
-  const calculatePasswordStrength = (password: string) => {
-    let strength = 0
-    if (password.length >= 6) strength += 1
-    if (password.length >= 8) strength += 1
-    if (/[A-Z]/.test(password)) strength += 1
-    if (/[0-9]/.test(password)) strength += 1
-    if (/[^A-Za-z0-9]/.test(password)) strength += 1
-    return strength
-  }
-
-  const getPasswordStrengthColor = (strength: number) => {
-    if (strength <= 1) return 'bg-red-500'
-    if (strength <= 2) return 'bg-orange-500'
-    if (strength <= 3) return 'bg-yellow-500'
-    if (strength <= 4) return 'bg-blue-500'
-    return 'bg-green-500'
-  }
-
-  const getPasswordStrengthText = (strength: number) => {
-    if (strength <= 1) return 'Weak'
-    if (strength <= 2) return 'Fair'
-    if (strength <= 3) return 'Good'
-    if (strength <= 4) return 'Strong'
-    return 'Very Strong'
+  // Get password validation result
+  const getPasswordValidation = (password: string) => {
+    return validatePassword(password)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -98,9 +78,10 @@ export default function Register() {
       return
     }
 
-    // Validate password length
-    if (formData.password.length < 6) {
-      setError("Password must be at least 6 characters long")
+    // Validate password requirements
+    const passwordValidation = validatePassword(formData.password)
+    if (!passwordValidation.isValid) {
+      setError(passwordValidation.errors[0] || "Password does not meet requirements")
       setLoading(false)
       return
     }
@@ -458,14 +439,14 @@ export default function Register() {
                     <div className="flex items-center space-x-2">
                       <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                         <motion.div
-                          className={`h-2 rounded-full ${getPasswordStrengthColor(passwordStrength)}`}
+                          className={`h-2 rounded-full ${getStrengthColor(passwordStrength)}`}
                           initial={{ width: 0 }}
                           animate={{ width: `${(passwordStrength / 5) * 100}%` }}
                           transition={{ duration: 0.3 }}
                         />
                       </div>
                       <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                        {getPasswordStrengthText(passwordStrength)}
+                        {getStrengthText(passwordStrength)}
                       </span>
                     </div>
                   </motion.div>
