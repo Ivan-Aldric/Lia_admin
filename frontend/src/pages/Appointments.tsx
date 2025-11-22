@@ -501,17 +501,13 @@ export default function Appointments() {
       </div>
       {/* Add Appointment Modal */}
       {showAdd && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Schedule New Appointment</h3>
-            <button 
-              onClick={() => setShowAdd(false)} 
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-            >
-              <XCircle className="h-5 w-5" />
-            </button>
-          </div>
-          <form onSubmit={handleCreate} className="space-y-6">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Schedule New Appointment</h2>
+              <p className="text-gray-600 dark:text-gray-400 mt-1">Add a new appointment to your schedule</p>
+            </div>
+            <form onSubmit={handleCreate} className="p-6 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Title</label>
@@ -594,33 +590,24 @@ export default function Appointments() {
                 </div>
               </div>
             )}
-            <div className="flex items-center gap-3 justify-end">
-              <button 
-                type="button" 
-                onClick={() => setShowAdd(false)} 
-                className="px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-              >
-                Cancel
-              </button>
-              <button 
-                type="submit" 
-                disabled={creating} 
-                className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center"
-              >
-                {creating ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Scheduling...
-                  </>
-                ) : (
-                  <>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Appointment
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
+              <div className="flex items-center justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <button 
+                  type="button" 
+                  onClick={() => setShowAdd(false)} 
+                  className="px-6 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={creating} 
+                  className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 transition-colors"
+                >
+                  {creating ? 'Scheduling...' : 'Create Appointment'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
@@ -974,17 +961,13 @@ export default function Appointments() {
 
       {/* Edit Appointment Modal */}
       {showEdit && editAppt && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Edit Appointment</h3>
-            <button 
-              onClick={() => { setShowEdit(false); setEditAppt(null) }} 
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-            >
-              <XCircle className="h-5 w-5" />
-            </button>
-          </div>
-          <form onSubmit={handleUpdate} className="space-y-6">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Edit Appointment</h2>
+              <p className="text-gray-600 dark:text-gray-400 mt-1">Update appointment details</p>
+            </div>
+            <form onSubmit={handleUpdate} className="p-6 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Title</label>
@@ -1082,149 +1065,83 @@ export default function Appointments() {
                 </div>
               </div>
             )}
-            <div className="flex items-center gap-3 justify-end">
-              <button 
-                type="button" 
-                onClick={() => { setShowEdit(false); setEditAppt(null) }} 
-                className="px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-              >
-                Cancel
-              </button>
-              <button 
-                type="submit" 
-                disabled={editing} 
-                className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center"
-              >
-                {editing ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Edit3 className="h-4 w-4 mr-2" />
-                    Save Changes
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
+              <div className="flex items-center justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <button 
+                  type="button" 
+                  onClick={() => { setShowEdit(false); setEditAppt(null) }} 
+                  className="px-6 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={editing} 
+                  className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 transition-colors"
+                >
+                  {editing ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
       {/* View Appointment Modal */}
       {showView && viewAppt && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-8">
-          <div className="flex items-start justify-between mb-6">
-            <div>
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">{viewAppt.title}</h3>
-              <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                viewAppt.status === 'CONFIRMED' 
-                  ? 'bg-success-100 text-success-800 dark:bg-success-900 dark:text-success-200' :
-                viewAppt.status === 'SCHEDULED' 
-                  ? 'bg-warning-100 text-warning-800 dark:bg-warning-900 dark:text-warning-200' :
-                viewAppt.status === 'CANCELLED' 
-                  ? 'bg-error-100 text-error-800 dark:bg-error-900 dark:text-error-200' :
-                'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
-              }`}>
-                {viewAppt.status === 'CONFIRMED' && <CheckCircle className="h-4 w-4 mr-1" />}
-                {viewAppt.status === 'SCHEDULED' && <Clock className="h-4 w-4 mr-1" />}
-                {viewAppt.status === 'CANCELLED' && <XCircle className="h-4 w-4 mr-1" />}
-                {viewAppt.status}
-              </span>
-            </div>
-            <button 
-              onClick={() => setShowView(false)} 
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-            >
-              <XCircle className="h-5 w-5" />
-            </button>
-          </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-            <div className="flex items-center space-x-3">
-              <div className="p-3 bg-primary-100 dark:bg-primary-900/20 rounded-lg">
-                <Calendar className="h-5 w-5 text-primary-600 dark:text-primary-400" />
-          </div>
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Date</p>
-                <p className="text-gray-900 dark:text-white font-medium">{formatDate(viewAppt.startTime)}</p>
-        </div>
-          </div>
-            <div className="flex items-center space-x-3">
-              <div className="p-3 bg-warning-100 dark:bg-warning-900/20 rounded-lg">
-                <Clock className="h-5 w-5 text-warning-600 dark:text-warning-400" />
-          </div>
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Time</p>
-                <p className="text-gray-900 dark:text-white font-medium">{formatTime(viewAppt.startTime)} - {formatTime(viewAppt.endTime)}</p>
-        </div>
-          </div>
-            {viewAppt.location && (
-              <div className="flex items-center space-x-3">
-                <div className="p-3 bg-success-100 dark:bg-success-900/20 rounded-lg">
-                  <MapPin className="h-5 w-5 text-success-600 dark:text-success-400" />
-          </div>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-lg w-full">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Location</p>
-                  <p className="text-gray-900 dark:text-white font-medium">{viewAppt.location}</p>
-        </div>
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white">{viewAppt.title}</h3>
+                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium mt-2 ${
+                    viewAppt.status === 'CONFIRMED' 
+                      ? 'bg-success-100 text-success-800 dark:bg-success-900 dark:text-success-200' :
+                    viewAppt.status === 'SCHEDULED' 
+                      ? 'bg-warning-100 text-warning-800 dark:bg-warning-900 dark:text-warning-200' :
+                    viewAppt.status === 'CANCELLED' 
+                      ? 'bg-error-100 text-error-800 dark:bg-error-900 dark:text-error-200' :
+                    'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+                  }`}>
+                    {viewAppt.status === 'CONFIRMED' && <CheckCircle className="h-4 w-4 mr-1" />}
+                    {viewAppt.status === 'SCHEDULED' && <Clock className="h-4 w-4 mr-1" />}
+                    {viewAppt.status === 'CANCELLED' && <XCircle className="h-4 w-4 mr-1" />}
+                    {viewAppt.status}
+                  </span>
+                </div>
+                <button 
+                  onClick={() => setShowView(false)} 
+                  className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                >
+                  <XCircle className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Date</p>
+                  <p className="text-lg font-semibold text-gray-900 dark:text-white">{formatDate(viewAppt.startTime)}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Time</p>
+                  <p className="text-lg font-semibold text-gray-900 dark:text-white">{formatTime(viewAppt.startTime)} - {formatTime(viewAppt.endTime)}</p>
+                </div>
+              </div>
+              {viewAppt.location && (
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Location</p>
+                  <p className="text-lg font-semibold text-gray-900 dark:text-white">{viewAppt.location}</p>
+                </div>
+              )}
+              {viewAppt.description && (
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Description</p>
+                  <p className="text-gray-900 dark:text-white">{viewAppt.description}</p>
+                </div>
+              )}
+            </div>
           </div>
-            )}
-          </div>
-          
-          {viewAppt.description && (
-            <div className="mb-6">
-              <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2">Description</h4>
-              <p className="text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
-                {viewAppt.description}
-              </p>
-        </div>
-          )}
-
-          {/* Attendees */}
-          {viewAppt.attendees && viewAppt.attendees.length > 0 && (
-            <div className="mb-6">
-              <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">Attendees</h4>
-              <div className="flex flex-wrap gap-2">
-                {viewAppt.attendees.map((attendee: any, index: number) => (
-                  <div
-                    key={index}
-                    className="flex items-center space-x-2 px-3 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg"
-                  >
-                    <span className="text-sm text-gray-900 dark:text-white font-medium">
-                      {attendee.name}
-                    </span>
-                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                      attendee.status === 'CONFIRMED'
-                        ? 'bg-success-100 text-success-800 dark:bg-success-900 dark:text-success-200'
-                        : attendee.status === 'PENDING'
-                        ? 'bg-warning-100 text-warning-800 dark:bg-warning-900 dark:text-warning-200'
-                        : 'bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-200'
-                    }`}>
-                      {attendee.status}
-                    </span>
-          </div>
-                ))}
-          </div>
-        </div>
-          )}
-
-          <div className="flex items-center gap-3 justify-end">
-            <button 
-              onClick={() => setShowView(false)} 
-              className="px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
-              Close
-            </button>
-            <button 
-              onClick={() => { setShowView(false); openEdit(viewAppt) }} 
-              className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors inline-flex items-center"
-            >
-              <Edit3 className="h-4 w-4 mr-2" />
-              Edit Appointment
-            </button>
-      </div>
         </div>
       )}
 
